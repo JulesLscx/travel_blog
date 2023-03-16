@@ -153,22 +153,16 @@ function deliver_response($status, $status_message, $data)
     echo $json_response;
 }
 
-function getData($id = null, $limit = null, $orderByVote = false, $signal = false)
+function getData($id = null, $limit = null)
 {
     require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
-    if ($limit != null && $orderByVote) {
-        $matchingData = getLimitedDataOrderedByVotes($pdo, $limit);
-    } else if ($signal) {
-        $matchingData = getLikeData($pdo);
-    } else if ($signal) {
-        $matchingData = getDislikeData($pdo);
+    if ($limit != null) {
+        $matchingData = getAllUsers($pdo);
     } else if ($limit != null) {
-        $matchingData = getLimitedData($pdo, $limit);
-    } else if ($orderByVote) {
-        $matchingData = getDataOrderedByVotes($pdo);
-    } else if ($id != null) {
-        $matchingData = getSingleData($pdo, $id);
+        $matchingData = getLikeData($pdo);
+    } else if ($limit != null) {
+        $matchingData = getDislikeData($pdo);
     } else {
         $matchingData = getAllArticle($pdo);
     }
@@ -353,10 +347,17 @@ function fautephrase($id, $faute)
 
 
 
-
+function getAllUsers($pdo)
+{
+    $sql = "SELECT login FROM ARTICLE";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
 function getAllArticle($pdo)
 {
-    $sql = "SELECT * FROM travel ORDER BY datep DESC";
+    $sql = "SELECT * FROM ARTICLE ORDER BY datep DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -364,7 +365,7 @@ function getAllArticle($pdo)
 }
 function getArticleAuteur($pdo, $login)
 {
-    $sql = "SELECT * FROM travel WHERE login = ?";
+    $sql = "SELECT * FROM ARTICLE WHERE login = ?";
     $values = array($login);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
@@ -377,7 +378,7 @@ function deleteArticle($id)
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     try {
-        $sql = "DELETE FROM travel WHERE id = ?";
+        $sql = "DELETE FROM ARTICLE WHERE id = ?";
         $values = array($id);
         $stmt = $pdo->prepare($sql);
         $matchingData[0] = ($stmt->execute($values));
@@ -388,7 +389,7 @@ function deleteArticle($id)
 }
 function getLikeData($pdo)
 {
-    $sql = "SELECT * FROM travel WHERE likes > 0 ORDER BY likes DESC";
+    $sql = "SELECT * FROM ARTICLE WHERE likes > 0 ORDER BY likes DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -396,7 +397,7 @@ function getLikeData($pdo)
 }
 function getDislikeData($pdo)
 {
-    $sql = "SELECT * FROM travel WHERE dislike > 0 ORDER BY dislike DESC";
+    $sql = "SELECT * FROM ARTICLE WHERE dislike > 0 ORDER BY dislike DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
