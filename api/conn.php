@@ -26,8 +26,8 @@ class DBConnection
         $port = 3306;
         try {
             $this->conn = new PDO("mysql:host=$host;dbname=$db;charset=UTF8;port=$port", $user, $password);
-            // $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            // $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
         } catch (Exception $e) {
             die('Erreur : ' . $e->getMessage());
         }
