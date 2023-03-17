@@ -1,4 +1,6 @@
 <?php
+require('./files/api_utils.php');
+require('./files/bdd_utils.php');
 header("Content-Type:application/json");
 /// Identification du type de méthode HTTP envoyée par le client
 $http_method = $_SERVER['REQUEST_METHOD'];
@@ -139,23 +141,9 @@ switch ($http_method) {
         deliver_response(400, "Aucune action effectuée relisez ", NULL);
         break;
 }
-function deliver_response($status, $status_message, $data)
-{
-
-    $response = array();
-    header("HTTP/1.1 $status $status_message");
-    /// Paramétrage de la réponse retournée
-    $response['status'] = $status;
-    $response['status_message'] = $status_message;
-    $response['data'] = $data;
-    $json_response = json_encode($response);
-    // var_dump($json_response);
-    echo $json_response;
-}
 
 function getData($id = null, $limit = null)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     if ($limit != null) {
         $matchingData = getAllUsers($pdo);
@@ -212,7 +200,6 @@ function getSingleData($pdo, $id)
 
 function updateAFact($id, $phrase = null, $vote = -1, $faute = -1, $signalement = -1)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     $current_phrase = getData($id);
     if ($phrase == null) {
@@ -243,7 +230,6 @@ function updateAFact($id, $phrase = null, $vote = -1, $faute = -1, $signalement 
 }
 function addphrase($phrase)
 {
-    require_once("conn.php");
     // Transaction pour récupérer l'id de la phrase
     try {
         $pdo = DBConnection::getInstance()->getConnection();
@@ -263,7 +249,6 @@ function addphrase($phrase)
 }
 function votePhrase($id, $vote)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     if ($vote) {
@@ -283,7 +268,6 @@ function votePhrase($id, $vote)
 }
 function signalPhrase($id, $signalement)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     if ($signalement) {
@@ -303,7 +287,6 @@ function signalPhrase($id, $signalement)
 }
 function fautephrase($id, $faute)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     if ($faute) {
@@ -374,7 +357,6 @@ function getArticleAuteur($pdo, $login)
 }
 function deleteArticle($id)
 {
-    require_once("conn.php");
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     try {
