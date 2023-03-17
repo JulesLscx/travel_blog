@@ -148,9 +148,9 @@ function getData($id = null, $limit = null)
     if ($limit != null) {
         $matchingData = getAllUsers($pdo);
     } else if ($limit != null) {
-        $matchingData = getLikeData($pdo);
+        $matchingData = getLikeData($pdo, $id);
     } else if ($limit != null) {
-        $matchingData = getDislikeData($pdo);
+        $matchingData = getDislikeData($pdo, $id);
     } else {
         $matchingData = getAllArticle($pdo);
     }
@@ -325,11 +325,33 @@ function fautephrase($id, $faute)
 
 
 
-
-
-
-
-
+function getArticleTag($pdo, $tag)
+{
+    $sql = "SELECT ARTICLE.* FROM ARTICLE JOIN TAGS ON ARTICLE.ID=TAGS.ID WHERE TAG = ?";
+    $values = array($tag);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
+function getArticleDate($pdo, $date)
+{
+    $sql = "SELECT * FROM ARTICLE WHERE datep = ?";
+    $values = array($date);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
+function getArticleTitre($pdo, $titre)
+{
+    $sql = "SELECT * FROM ARTICLE WHERE titre = ?";
+    $values = array($titre);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
 function getAllUsers($pdo)
 {
     $sql = "SELECT login FROM ARTICLE";
@@ -360,7 +382,7 @@ function deleteArticle($id)
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     try {
-        $sql = "DELETE FROM ARTICLE WHERE id = ?";
+        $sql = "DELETE * FROM ARTICLE WHERE id = ?";
         $values = array($id);
         $stmt = $pdo->prepare($sql);
         $matchingData[0] = ($stmt->execute($values));
@@ -369,19 +391,21 @@ function deleteArticle($id)
     }
     return $matchingData;
 }
-function getLikeData($pdo)
+function getLikeData($pdo, $id)
 {
-    $sql = "SELECT * FROM ARTICLE WHERE likes > 0 ORDER BY likes DESC";
+    $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes > 0";
+    $values = array($id);
     $stmt = $pdo->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getDislikeData($pdo)
+function getDislikeData($pdo, $id)
 {
-    $sql = "SELECT * FROM ARTICLE WHERE dislike > 0 ORDER BY dislike DESC";
+    $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes < 0";
+    $values = array($id);
     $stmt = $pdo->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
