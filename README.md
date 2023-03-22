@@ -1,6 +1,6 @@
 # Travel Blog API
 
-Cette API permet de se connecter à nos serveurs contenant des Articles et Post de blog concernant le voyage. Les articles peuvent êtres chercher par tags. Vous devez créer un compte pour poster des blogs pour vous connecter aller voir [Comment se connecter](/Travel%20Blog%20API/Serveur%20d'authentification/).
+Cette API permet de se connecter à nos serveurs contenant des Articles et Post de blog concernant le voyage. Les articles peuvent êtres chercher par tags. Vous devez créer un compte pour poster des blogs pour vous connecter aller voir [Comment se connecter](/travel_blog#serveur-dauthentification).
 Le serveur d'API est accessible à l'IP : [15.188.174.107](http://15.188.174.107)
 <br>
 ## Base de données
