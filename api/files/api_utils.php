@@ -58,6 +58,6 @@ function is_valid_user(string $login, string $mdp): int
         $datas = $result->fetch();
         return $datas['ROLE'];
     } else {
-        return false;
+        return -1;
     }
 }
