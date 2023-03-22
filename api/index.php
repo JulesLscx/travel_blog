@@ -33,10 +33,6 @@ switch ($http_method) {
         if (empty($_GET['tag'])) {
             $matchingData = getData(null, $limit, $orderByVote, $signal);
         } else {
-            if (!is_numeric($_GET['tag'])) {
-                deliver_response(400, "Requête invalide", NULL);
-                exit;
-            }
             $matchingData = getArticleTag($_GET['tag']);
         }
         // if (empty($_GET['date'])) {
@@ -47,19 +43,11 @@ switch ($http_method) {
         if (empty($_GET['titre'])) {
             $matchingData = getData(null, $limit, $orderByVote, $signal);
         } else {
-            if (!is_numeric($_GET['titre'])) {
-                deliver_response(400, "Requête invalide", NULL);
-                exit;
-            }
             $matchingData = getArticleTitre($_GET['titre']);
         }
         if (empty($_GET['login'])) {
             $matchingData = getData(null, $limit, $orderByVote, $signal);
         } else {
-            if (!is_numeric($_GET['login'])) {
-                deliver_response(400, "Requête invalide", NULL);
-                exit;
-            }
             $matchingData = getArticleAuteur($_GET['login']);
         }
         /// Envoi de la réponse au Client
@@ -184,7 +172,7 @@ function getData($id = null, $limit = null)
     } else if ($limit != null) {
         $matchingData = getDislikeData($pdo, $id);
     } else {
-        $matchingData = getAllArticle($pdo);
+        $matchingData = getAllArticle();
     }
     return $matchingData;
 }
