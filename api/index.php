@@ -28,7 +28,39 @@ switch ($http_method) {
                 deliver_response(400, "Requête invalide", NULL);
                 exit;
             }
-            $matchingData = getData($_GET['id'], $limit);
+            $matchingData = getArticleId($_GET['id']);
+        }
+        if (empty($_GET['tag'])) {
+            $matchingData = getData(null, $limit, $orderByVote, $signal);
+        } else {
+            if (!is_numeric($_GET['tag'])) {
+                deliver_response(400, "Requête invalide", NULL);
+                exit;
+            }
+            $matchingData = getArticleTag($_GET['tag']);
+        }
+        // if (empty($_GET['date'])) {
+        //     $matchingData = getData(null, $limit, $orderByVote, $signal);
+        // } else {
+        //     $matchingData = getArticleTag($_GET['date']);
+        // }
+        if (empty($_GET['titre'])) {
+            $matchingData = getData(null, $limit, $orderByVote, $signal);
+        } else {
+            if (!is_numeric($_GET['titre'])) {
+                deliver_response(400, "Requête invalide", NULL);
+                exit;
+            }
+            $matchingData = getArticleTitre($_GET['titre']);
+        }
+        if (empty($_GET['login'])) {
+            $matchingData = getData(null, $limit, $orderByVote, $signal);
+        } else {
+            if (!is_numeric($_GET['login'])) {
+                deliver_response(400, "Requête invalide", NULL);
+                exit;
+            }
+            $matchingData = getArticleAuteur($_GET['login']);
         }
         /// Envoi de la réponse au Client
         deliver_response(200, "Voici les données demandées !", $matchingData);
@@ -324,9 +356,19 @@ function fautephrase($id, $faute)
 
 
 
-
-function getArticleTag($pdo, $tag)
+function getArticleId($id)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
+    $sql = "SELECT * FROM ARTICLE WHERE id = ?";
+    $values = array($id);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
+function getArticleTag($tag)
+{
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT ARTICLE.* FROM ARTICLE JOIN TAGS ON ARTICLE.ID=TAGS.ID WHERE TAG = ?";
     $values = array($tag);
     $stmt = $pdo->prepare($sql);
@@ -334,8 +376,9 @@ function getArticleTag($pdo, $tag)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getArticleDate($pdo, $date)
+function getArticleDate($date)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT * FROM ARTICLE WHERE datep = ?";
     $values = array($date);
     $stmt = $pdo->prepare($sql);
@@ -343,8 +386,9 @@ function getArticleDate($pdo, $date)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getArticleTitre($pdo, $titre)
+function getArticleTitre($titre)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT * FROM ARTICLE WHERE titre = ?";
     $values = array($titre);
     $stmt = $pdo->prepare($sql);
@@ -352,24 +396,27 @@ function getArticleTitre($pdo, $titre)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getAllUsers($pdo)
+function getAllUsers()
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT login FROM ARTICLE";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getAllArticle($pdo)
+function getAllArticle()
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT * FROM ARTICLE ORDER BY datep DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getArticleAuteur($pdo, $login)
+function getArticleAuteur($login)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT * FROM ARTICLE WHERE login = ?";
     $values = array($login);
     $stmt = $pdo->prepare($sql);
@@ -391,8 +438,9 @@ function deleteArticle($id)
     }
     return $matchingData;
 }
-function getLikeData($pdo, $id)
+function getLikeData($id)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes > 0";
     $values = array($id);
     $stmt = $pdo->prepare($sql);
@@ -400,8 +448,9 @@ function getLikeData($pdo, $id)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-function getDislikeData($pdo, $id)
+function getDislikeData($id)
 {
+    $pdo = DBConnection::getInstance()->getConnection();
     $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes < 0";
     $values = array($id);
     $stmt = $pdo->prepare($sql);
