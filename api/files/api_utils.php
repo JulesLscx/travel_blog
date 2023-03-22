@@ -20,7 +20,7 @@ function deliver_response(int $status, string $status_message, $data): void
  **/
 function is_authorized(int $privileges_required): bool
 {
-    require('./jwt_utils.php');
+    require('jwt_utils.php');
     $jwt = get_bearer_token();
     if ($jwt == NULL && $privileges_required == 0) {
         return true;
@@ -47,15 +47,16 @@ function is_authorized(int $privileges_required): bool
  * @param string $mdp : the password of the user
  * @return bool|int : false if the user is not valid, the role of the user if it is valid
  */
-function is_valid_user(string $login, string $mdp): bool|int
+function is_valid_user(string $login, string $mdp): int
 {
-    require('./bdd_utils.php');
+    require_once('bdd_utils.php');
     $conn = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT role FROM users WHERE login = '$login' AND mdp = '$mdp'";
+    $sql = "SELECT * FROM users WHERE login = '$login' AND mdp = '$mdp'";
     $result = $conn->query($sql);
+    $result->execute();
     if ($result->rowCount() == 1) {
-        $privilege = $result->fetch(PDO::FETCH_ASSOC)['role'];
-        return $privilege;
+        $datas = $result->fetch();
+        return $datas['ROLE'];
     } else {
         return false;
     }

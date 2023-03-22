@@ -1,11 +1,9 @@
-In dev...
 <?php
 require('../files/jwt_utils.php');
-require('../conn.php');
-require('../files/api-utils.php');
+require('../files/bdd_utils.php');
+require('../files/api_utils.php');
 header("Content-Type:application/json");
 $http_method = $_SERVER['REQUEST_METHOD'];
-
 if ($http_method != 'POST') {
     deliver_response(405, "Method Not Allowed", NULL);
     exit();
@@ -17,3 +15,19 @@ if (!isset($data['login']) || !isset($data['mdp'])) {
 }
 $login = $data['login'];
 $mdp = $data['mdp'];
+$privilege = is_valid_user($login, $mdp);
+if ($privilege >= 0) {
+    $payload = array(
+        "login" => $login,
+        "privileges" => $privilege,
+        "exp" => time() + 60
+    );
+    $header = array(
+        "alg" => "HS256",
+        "typ" => "JWT"
+    );
+    $jwt = generate_jwt($header, $payload);
+    deliver_response(200, "OK", $jwt);
+} else {
+    deliver_response(401, "Unauthorized, invalid login or password", NULL);
+}
