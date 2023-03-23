@@ -1,9 +1,17 @@
 <?php
 require('./files/api_utils.php');
 require('./files/bdd_utils.php');
+require('./files/jwt_utils.php');
 header("Content-Type:application/json");
 /// Identification du type de méthode HTTP envoyée par le client
 $http_method = $_SERVER['REQUEST_METHOD'];
+$isAuthentified = false;
+$token = get_bearer_token();
+$token_content = NULL;
+if ($token != NULL) {
+    $isAuthentified = is_jwt_valid($token);
+    $token_content = json_decode(base64_decode(explode('.', $token)[1]));
+}
 switch ($http_method) {
         /// Cas de la méthode GET
     case "AUTH":

@@ -30,7 +30,7 @@ function is_authorized(int $privileges_required): bool
     }
     if (is_jwt_valid($jwt)) {
         $payload = json_decode(base64_decode(explode('.', $jwt)[1]));
-        if ($payload->privileges >= $privileges_required) {
+        if ($payload->privileges == $privileges_required) {
             return true;
         } else {
             deliver_response(403, "Forbidden", NULL);
