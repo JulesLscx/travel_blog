@@ -303,7 +303,9 @@ function fautephrase($id, $faute)
 
 
 
+# METHODES GET :
 
+# RETOURNE UN ARTICLE AVEC UN ID
 function getArticleId($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -314,6 +316,7 @@ function getArticleId($id)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE UN ARTICLE AVEC UN TAG(DESTINATION, ACTIVITE, ...)
 function getArticleTag($tag)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -324,6 +327,7 @@ function getArticleTag($tag)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE UN ARTICLE AVEC UNE DATE MAIS ON UTILISE PAS AU FINAL
 function getArticleDate($date)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -334,6 +338,7 @@ function getArticleDate($date)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE UN/DES ARTICLE(S) DEPUIS TITRE
 function getArticleTitre($titre)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -344,6 +349,7 @@ function getArticleTitre($titre)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE TOUS LES UTILISATEURS DE LA BASE DE DONNEES
 function getAllUsers()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -353,6 +359,7 @@ function getAllUsers()
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE TOUS LES ARTICLES POUR UNE PERSONNNE NON AUTHENTIFIE SOIT ARTICLE(LOGIN, DATEP, CONTENU)
 function getAllArticleNonAuth()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -362,6 +369,7 @@ function getAllArticleNonAuth()
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE TOUS LES ARTICLES POUR UNE PERSONNNE AUTHENTIFIE AVEC TOUS LES CHAMPS
 function getAllArticle()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -371,6 +379,7 @@ function getAllArticle()
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE TOUS LES ARTICLES D'UN AUTEUR/PUBLISHER
 function getArticleAuteur($login)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -381,6 +390,7 @@ function getArticleAuteur($login)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE ABSOLUMENT TOUS LES ARTICLES 
 function getArticleModo()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -426,6 +436,7 @@ function getArticleModo()
     }
     return $matchingData;
 }
+# RETOURNE TOUS LES ARTICLES POUR UN PUBLISHER MAIS PAS LA LISTE DES GENS QUI ONT LIKES/DISLIKES
 function getArticlePubli()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -474,6 +485,11 @@ function getArticlePubli()
 
     return $matchingData;
 }
+
+
+# METHODE POST
+
+# AJOUTE UN ARTICLE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function addArticle($contenu, $login, $titre)
 {
     try {
@@ -492,6 +508,7 @@ function addArticle($contenu, $login, $titre)
     }
     return $matchingData;
 }
+# AJOUTE UN LIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function addLikes($login, $id)
 {
     try {
@@ -510,6 +527,7 @@ function addLikes($login, $id)
     }
     return $matchingData;
 }
+# AJOUTE UN DISLIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function addDislikes($login, $id)
 {
     try {
@@ -528,6 +546,10 @@ function addDislikes($login, $id)
     }
     return $matchingData;
 }
+
+# METHODE DELETE
+
+# SUPPRIME UN ARTICLE DEPUIS UN ID (UNIQUEMENT UN MODERATEUR PEUT FAIRE CELA)
 function deleteArticleModo($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -542,6 +564,7 @@ function deleteArticleModo($id)
     }
     return $matchingData;
 }
+# SUPPRIME SON PROPRE ARTICLE DEPUIS UN ID,LOGIN (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function deleteArticleAuteur($id, $login)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -556,6 +579,10 @@ function deleteArticleAuteur($id, $login)
     }
     return $matchingData;
 }
+
+# METHODE PUT
+
+# MODIFIE UN ARTICLE DEPUIS UN ID,LOGIN,CONTENU et TITRE  (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function updateArticle($login, $id, $contenu, $titre)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -575,6 +602,7 @@ function updateArticle($login, $id, $contenu, $titre)
 
     return $matchingData;
 }
+# RETOURNE LES LIKES D'UN ARTICLE DEPUIS UN ID POUR LA FONCTION addLikes
 function getLikeData($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -585,6 +613,7 @@ function getLikeData($id)
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+# RETOURNE LES DISLIKES D'UN ARTICLE DEPUIS UN ID POUR LA FONCTION addDislikes
 function getDislikeData($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
