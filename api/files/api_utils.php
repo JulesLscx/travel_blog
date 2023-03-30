@@ -14,7 +14,6 @@ function deliver_response(int $status, string $status_message, $data): void
 /**
  * Function is_authorized
  * Check if the user is authorized to access the resource he is trying to access
- * If the user is not authorized, the function will deliver a response and return false
  * @param int $privileges_required : the privileges required to access the resource
  * @return bool : true if the user is authorized, false otherwise
  **/
@@ -25,7 +24,6 @@ function is_authorized(int $privileges_required): bool
     if ($jwt == NULL && $privileges_required == 0) {
         return true;
     } else if ($jwt == NULL && $privileges_required != 0) {
-        deliver_response(401, "Unauthorized, unable to locate your authentification token", NULL);
         return false;
     }
     if (is_jwt_valid($jwt)) {
@@ -33,11 +31,9 @@ function is_authorized(int $privileges_required): bool
         if ($payload->privileges == $privileges_required) {
             return true;
         } else {
-            deliver_response(403, "Forbidden", NULL);
             return false;
         }
     } else {
-        deliver_response(401, "Unauthorized, invalid token", NULL);
         return false;
     }
 }

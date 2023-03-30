@@ -3,7 +3,6 @@ require('./files/api_utils.php');
 require('./files/bdd_utils.php');
 require('./files/jwt_utils.php');
 header("Content-Type:application/json");
-/// Identification du type de méthode HTTP envoyée par le client
 $http_method = $_SERVER['REQUEST_METHOD'];
 $isAuthentified = false;
 $token = get_bearer_token();
@@ -12,212 +11,114 @@ if ($token != NULL) {
     $isAuthentified = is_jwt_valid($token);
     $token_content = json_decode(base64_decode(explode('.', $token)[1]));
 }
+# 0 = modo
+# 1 = publisher
 switch ($http_method) {
-        /// Cas de la méthode GET
-    case "AUTH":
-        break;
     case "GET":
-        /// Récupération des critères de recherche envoyés par le Client
-        if (!empty($_GET['last'])) {
-            if (!is_numeric($_GET['last'])) {
-                deliver_response(400, "Requête invalide", NULL);
-                exit;
+        if ($isAuthentified) {
+            if (is_authorized(0)) {
+                if (empty($_GET['id'])) {
+                    $matchingData = getArticleModo();
+                } else {
+                    if (!is_numeric($_GET['id'])) {
+                        deliver_response(400, "Requête invalide id non numérique", NULL);
+                        return;
+                    }
+                    $matchingData = getArticleId($_GET['id']);
+                }
+                if (empty($matchingData)) {
+                    deliver_response(404, "Aucun article trouvé", NULL);
+                    return;
+                }
+                deliver_response(200, "Article trouvé", $matchingData);
+                return;
             }
-            $limit = $_GET['last'];
-        } else {
-            $limit = null;
-        }
-        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            $matchingData = getAllArticleNonAuth();
-        } else {
-            if ($token_content->privileges == 0) {
-                $matchingData = getArticleModo();
-                // - Consulter n’importe quel article. Un utilisateur moderator doit accéder à l’ensemble des
-                // informations décrivant un article : auteur, date de publication, contenu, liste des
-                // utilisateurs ayant liké l’article, nombre total de like, liste des utilisateurs ayant disliké
-                // l’article, nombre total de dislike.
-                // - Supprimer n’importe quel article.
-        } else {
-            $matchingData = array(getArticleAuteur($_GET['login']), getArticlePubli());
-
-                // - Poster un nouvel article.
-                // - Consulter ses propres articles.
-                // - Consulter les articles publiés par les autres utilisateurs. Un utilisateur publisher doit
-                // accéder aux informations suivantes relatives à un article : auteur, date de publication,
-                // contenu, nombre total de like, nombre total de dislike.
-                // - Modifier les articles dont il est l’auteur.
-                // - Supprimer les articles dont il est l’auteur.
-                // - Liker/disliker les articles publiés par les autres utilisateurs.
+            if (is_authorized(1)) {
+                if (empty($_GET['id'])) {
+                    $matchingData = getAllArticle();
+                } else {
+                    if (!is_numeric($_GET['id'])) {
+                        deliver_response(400, "Requête invalide id non numérique", NULL);
+                        return;
+                    }
+                    $matchingData = getArticleId($_GET['id']);
+                }
+                if (empty($matchingData)) {
+                    deliver_response(404, "Aucun article trouvé", NULL);
+                    return;
+                }
+                deliver_response(200, "Article trouvé", $matchingData);
+            }
+            return;
         }
         if (empty($_GET['id'])) {
-            $matchingData = getData(null, $limit);
+            $matchingData = getAllArticleNonAuth();
         } else {
             if (!is_numeric($_GET['id'])) {
-                deliver_response(400, "Requête invalide", NULL);
-                exit;
+                deliver_response(400, "Requête invalide id non numérique", NULL);
+                return;
             }
             $matchingData = getArticleId($_GET['id']);
+            deliver_response(200, "Article trouvé", $matchingData);
+            return;
         }
-        if (empty($_GET['tag'])) {
-            $matchingData = getData(null, $limit);
-        } else {
-            $matchingData = getArticleTag($_GET['tag']);
-        }
-        if (empty($_GET['titre'])) {
-            $matchingData = getData(null, $limit);
-        } else {
-            $matchingData = getArticleTitre($_GET['titre']);
-        }
-        if (empty($_GET['login'])) {
-            $matchingData = getData(null, $limit);
-        } else {
-            $matchingData = getArticleAuteur($_GET['login']);
-        }
-        /// Envoi de la réponse au Client
-        deliver_response(200, "Voici les données demandées !", $matchingData);
         break;
-        /// Cas de la méthode POST
     case "POST":
         /// Récupération des données envoyées par le Client
+        if (!$isAuthentified) {
+            deliver_response(401, "Vous n'êtes pas authentifié", NULL);
+            return;
+        }
+        if (!is_authorized(1)) {
+            deliver_response(403, "Vous n'avez pas les droits pour ajouter un article", NULL);
+            return;
+        }
         $postedData = file_get_contents('php://input');
-
-
-        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            $matchingData = getAllArticle();
-        } else {
-            if ($token_content->privileges == 1) {
-                // - Poster un nouvel article.
-        } else {
-                // Peut pas poster d'article
-        }
-
         $postedData = json_decode($postedData, true);
-        if (empty($postedData['phrase'])) {
-            deliver_response(400, "Requête invalide", NULL);
+        if (empty($postedData['titre']) || empty($postedData['contenu'])) {
+            deliver_response(400, "Requête invalide titre ou contenu indéfini", NULL);
             return;
         }
-        $matchingData = addphrase($postedData['phrase']);
+        $matchingData = addArticle($postedData['titre'], $postedData['contenu'], $token_content->login);
         if (empty($matchingData) || $matchingData == false) {
-            deliver_response(500, "Erreur lors de l'insertion de la phrase", NULL);
+            deliver_response(500, "Erreur lors de l'ajout de l'article", NULL);
             return;
         }
-        deliver_response(201, "Phrase insérée", $matchingData);
+        deliver_response(200, "Article ajouté", $matchingData);
         break;
         /// Cas de la méthode PUT
     case "PATCH":
-        if (empty($_GET['id'])) {
-            deliver_response(400, "Requête invalide id indéfini", NULL);
-            return;
-        }
-        if (!is_numeric($_GET['id'])) {
-            deliver_response(400, "Requête invalide id non numérique", NULL);
-            return;
-        }
-        $postedData = file_get_contents('php://input');
-        $postedData = json_decode($postedData, true);
-        if (isset($postedData['vote'])) {
-            $vote = $postedData['vote'];
-            votePhrase($_GET['id'], $vote);
-            deliver_response(200, "Vote altéré", NULL);
-            return;
-        }
-        if (isset($postedData['signalement'])) {
-            $signalement = $postedData['signalement'];
-            signalPhrase($_GET['id'], $signalement);
-            deliver_response(200, "Signalement altéré", NULL);
-            return;
-        }
-        if (isset($postedData['faute'])) {
-            $faute = $postedData['faute'];
-            fautePhrase($_GET['id'], $faute);
-            deliver_response(200, "Faute altérée", NULL);
-            return;
-        }
-        deliver_response(400, "Requête invalide", NULL);
         break;
     case "PUT":
-
-        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            $matchingData = getAllArticle();
-        } else {
-            if ($token_content->privileges == 1) {
-                // - Modifier les articles dont il est l’auteur.
-        } else {
-            $matchingData = getAllArticle();
-        }
-        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            deliver_response(401, "Requête invalide", NULL);
-            return;
-        }
-        if (is_valid_user($_GET['login'], $_GET['mdp']) && $token_content->privileges == 1) {
-            # fonction pour modifier son article
-        }
-
-        if (empty($_GET['id'])) {
-            deliver_response(400, "Requête invalide id indéfini", NULL);
-            return;
-        }
-        if (!is_numeric($_GET['id'])) {
-            deliver_response(400, "Requête invalide id non numérique", NULL);
-            return;
-        }
-        /// Récupération des données envoyées par le Client
-        $postedData = file_get_contents('php://input');
-        if (empty($postedData['phrase'])) {
-            $phrase = null;
-        } else {
-            $phrase = $postedData['phrase'];
-        }
-        if (empty($postedDate['vote'])) {
-            $vote = -1;
-        } else {
-            $vote = $postedData['vote'];
-        }
-        if (empty($postedData['signalement'])) {
-            $signalement = -1;
-        } else {
-            $signalement = $postedData['signalement'];
-        }
-        if (empty($postedData['faute'])) {
-            $faute = -1;
-        } else {
-            $faute = $postedData['faute'];
-        }
-        try {
-            $matchingData = updateAFact($_GET['id'], $phrase, $vote, $signalement, $faute);
-            deliver_response(200, "Phrase mise à jour", $matchingData);
-        } catch (Exception $e) {
-            deliver_response(500, "Erreur lors de la mise à jour de la phrase", NULL);
-        }
+        deliver_response(410, 'Méthode PUT non implémentée', NULL);
         break;
         /// Cas de la méthode DELETE
     case "DELETE":
-        /// Récupération de l'identifiant de la ressource envoyé par le Client
-
-        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            $matchingData = getAllArticle();
-        } else {
-            if ($token_content->privileges == 0) {
-                // - Supprimer n’importe quel article.
-        } else {
-                // - Supprimer les articles dont il est l’auteur.
+        if (!$isAuthentified) {
+            deliver_response(401, "Vous n'êtes pas authentifié", NULL);
+            return;
         }
-        if (is_valid_user()){
-            if ($token_content->privilege == 0){
-                $matchingData = deleteArticle($_GET['id']);
-                deliver_response(200, "Pas d'erreurs", $matchingData);
-            }
-        } else {
-            #fonction qui delete l'article de l'auteur uniquement
+        if (empty($_GET['id'])) {
+            deliver_response(400, "Requête invalide id indéfini", NULL);
+            return;
         }
-
-        /// Envoi de la réponse au Client
-        deliver_response(401, "Id indéfini", NULL);
-        break;
-        /// Cas par défaut
+        if (!is_numeric($_GET['id'])) {
+            deliver_response(400, "Requête invalide id non numérique", NULL);
+            return;
+        }
+        if (!is_authorized(1) && $token_content->login != getArticleId($_GET['id'])['login']) {
+            deliver_response(403, "Vous n'avez pas les droits pour supprimer cet article ce n'est pas le vôtre", NULL);
+            return;
+        }
+        $matchingData = deleteArticleModo($_GET['id']);
+        if (empty($matchingData) || $matchingData == false) {
+            deliver_response(500, "Erreur lors de la suppression de l'article", NULL);
+            return;
+        }
+        deliver_response(200, "Article supprimé", $matchingData);
     default:
         /// Envoi de la réponse au Client
-        deliver_response(400, "Aucune action effectuée relisez ", NULL);
+        deliver_response(400, "Aucune action effectuée relisez la documentation ", NULL);
         break;
 }
 
@@ -483,19 +384,19 @@ function getArticleAuteur($login)
 function getArticleModo()
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    
+
     // Récupérer tous les articles
     $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
     $stmt_articles = $pdo->prepare($sql_articles);
     $stmt_articles->execute();
     $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Récupérer les réactions de type "like"
     $sql_likes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
     $stmt_likes = $pdo->prepare($sql_likes);
     $stmt_likes->execute();
     $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Récupérer les réactions de type "dislike"
     $sql_dislikes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
     $stmt_dislikes = $pdo->prepare($sql_dislikes);
@@ -506,7 +407,7 @@ function getArticleModo()
     $matchingData = array();
     foreach ($articles as $article) {
         $id_article = $article['ID'];
-        
+
         $matchingData[$id_article] = array(
             'article' => $article,
             'likes' => array(),
@@ -522,12 +423,13 @@ function getArticleModo()
                 $matchingData[$id_article]['dislikes'] = explode(",", $dislike['DISLIKES']);
             }
         }
-    } return $matchingData;
+    }
+    return $matchingData;
 }
 function getArticlePubli()
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    
+
     // Récupérer tous les articles
     $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
     $stmt_articles = $pdo->prepare($sql_articles);
@@ -539,7 +441,7 @@ function getArticlePubli()
     $stmt_likes = $pdo->prepare($sql_likes);
     $stmt_likes->execute();
     $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Récupérer les réactions de type "dislike"
     $sql_dislikes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
     $stmt_dislikes = $pdo->prepare($sql_dislikes);
@@ -550,26 +452,26 @@ function getArticlePubli()
     $matchingData = array();
     foreach ($articles as $article) {
         $id_article = $article['ID'];
-        
+
         $matchingData[$id_article] = array(
             'article' => $article,
             'nb_likes' => 0,
             'nb_dislikes' => 0
         );
-        
+
         foreach ($likes as $like) {
             if ($like['ID_ARTICLE'] == $id_article) {
                 $matchingData[$id_article]['nb_likes'] = $like['NB_LIKES'];
             }
         }
-        
+
         foreach ($dislikes as $dislike) {
             if ($dislike['ID_ARTICLE'] == $id_article) {
                 $matchingData[$id_article]['nb_dislikes'] = $dislike['NB_DISLIKES'];
             }
         }
     }
-    
+
     return $matchingData;
 }
 function addArticle($contenu, $login, $titre)
@@ -646,7 +548,7 @@ function deleteArticleAuteur($id, $login)
     $matchingData = array();
     try {
         $sql = "DELETE * FROM ARTICLE WHERE id = ? AND login = ?";
-        $values = array($id,$login);
+        $values = array($id, $login);
         $stmt = $pdo->prepare($sql);
         $matchingData[0] = ($stmt->execute($values));
     } catch (Exception $e) {
