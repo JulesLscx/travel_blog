@@ -27,10 +27,30 @@ switch ($http_method) {
         } else {
             $limit = null;
         }
-        $orderByVote = isset($_GET['orderByVote']);
-        $signal = isset($_GET['signal']);
+        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
+            $matchingData = getAllArticle();
+        } else {
+            if ($token_content->privileges == 0) {
+                $matchingData = getArticleModo();
+                // - Consulter n’importe quel article. Un utilisateur moderator doit accéder à l’ensemble des
+                // informations décrivant un article : auteur, date de publication, contenu, liste des
+                // utilisateurs ayant liké l’article, nombre total de like, liste des utilisateurs ayant disliké
+                // l’article, nombre total de dislike.
+                // - Supprimer n’importe quel article.
+        } else {
+            $matchingData = getArticleAuteur($_GET['login']);
+
+                // - Poster un nouvel article.
+                // - Consulter ses propres articles.
+                // - Consulter les articles publiés par les autres utilisateurs. Un utilisateur publisher doit
+                // accéder aux informations suivantes relatives à un article : auteur, date de publication,
+                // contenu, nombre total de like, nombre total de dislike.
+                // - Modifier les articles dont il est l’auteur.
+                // - Supprimer les articles dont il est l’auteur.
+                // - Liker/disliker les articles publiés par les autres utilisateurs.
+        }
         if (empty($_GET['id'])) {
-            $matchingData = getData(null, $limit, $orderByVote, $signal);
+            $matchingData = getData(null, $limit);
         } else {
             if (!is_numeric($_GET['id'])) {
                 deliver_response(400, "Requête invalide", NULL);
@@ -39,22 +59,17 @@ switch ($http_method) {
             $matchingData = getArticleId($_GET['id']);
         }
         if (empty($_GET['tag'])) {
-            $matchingData = getData(null, $limit, $orderByVote, $signal);
+            $matchingData = getData(null, $limit);
         } else {
             $matchingData = getArticleTag($_GET['tag']);
         }
-        // if (empty($_GET['date'])) {
-        //     $matchingData = getData(null, $limit, $orderByVote, $signal);
-        // } else {
-        //     $matchingData = getArticleTag($_GET['date']);
-        // }
         if (empty($_GET['titre'])) {
-            $matchingData = getData(null, $limit, $orderByVote, $signal);
+            $matchingData = getData(null, $limit);
         } else {
             $matchingData = getArticleTitre($_GET['titre']);
         }
         if (empty($_GET['login'])) {
-            $matchingData = getData(null, $limit, $orderByVote, $signal);
+            $matchingData = getData(null, $limit);
         } else {
             $matchingData = getArticleAuteur($_GET['login']);
         }
@@ -66,10 +81,16 @@ switch ($http_method) {
         /// Récupération des données envoyées par le Client
         $postedData = file_get_contents('php://input');
 
-        if (empty($postedData)) {
-            deliver_response(400, "Requête invalide", NULL);
-            return;
+
+        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
+            $matchingData = getAllArticle();
+        } else {
+            if ($token_content->privileges == 1) {
+                // - Poster un nouvel article.
+        } else {
+                // Peut pas poster d'article
         }
+
         $postedData = json_decode($postedData, true);
         if (empty($postedData['phrase'])) {
             deliver_response(400, "Requête invalide", NULL);
@@ -115,6 +136,23 @@ switch ($http_method) {
         deliver_response(400, "Requête invalide", NULL);
         break;
     case "PUT":
+
+        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
+            $matchingData = getAllArticle();
+        } else {
+            if ($token_content->privileges == 1) {
+                // - Modifier les articles dont il est l’auteur.
+        } else {
+            $matchingData = getAllArticle();
+        }
+        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
+            deliver_response(401, "Requête invalide", NULL);
+            return;
+        }
+        if (is_valid_user($_GET['login'], $_GET['mdp']) && $token_content->privileges == 1) {
+            # fonction pour modifier son article
+        }
+
         if (empty($_GET['id'])) {
             deliver_response(400, "Requête invalide id indéfini", NULL);
             return;
@@ -155,11 +193,24 @@ switch ($http_method) {
         /// Cas de la méthode DELETE
     case "DELETE":
         /// Récupération de l'identifiant de la ressource envoyé par le Client
-        if (!empty($_GET['id'])) {
-            $matchingData = deleteArticle($_GET['id']);
-            deliver_response(200, "Pas d'erreurs", $matchingData);
-            return;
+
+        if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
+            $matchingData = getAllArticle();
+        } else {
+            if ($token_content->privileges == 0) {
+                // - Supprimer n’importe quel article.
+        } else {
+                // - Supprimer les articles dont il est l’auteur.
         }
+        if (is_valid_user()){
+            if ($token_content->privilege == 0){
+                $matchingData = deleteArticle($_GET['id']);
+                deliver_response(200, "Pas d'erreurs", $matchingData);
+            }
+        } else {
+            #fonction qui delete l'article de l'auteur uniquement
+        }
+
         /// Envoi de la réponse au Client
         deliver_response(401, "Id indéfini", NULL);
         break;
@@ -418,6 +469,98 @@ function getArticleAuteur($login)
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
+function getArticleModo()
+{
+    $pdo = DBConnection::getInstance()->getConnection();
+    
+    // Récupérer tous les articles
+    $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
+    $stmt_articles = $pdo->prepare($sql_articles);
+    $stmt_articles->execute();
+    $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Récupérer les réactions de type "like"
+    $sql_likes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
+    $stmt_likes = $pdo->prepare($sql_likes);
+    $stmt_likes->execute();
+    $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Récupérer les réactions de type "dislike"
+    $sql_dislikes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
+    $stmt_dislikes = $pdo->prepare($sql_dislikes);
+    $stmt_dislikes->execute();
+    $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
+
+    // Combinez les résultats dans un tableau associatif
+    $matchingData = array();
+    foreach ($articles as $article) {
+        $id_article = $article['ID'];
+        
+        $matchingData[$id_article] = array(
+            'article' => $article,
+            'likes' => array(),
+            'dislikes' => array()
+        );
+        foreach ($likes as $like) {
+            if ($like['ID_ARTICLE'] == $id_article) {
+                $matchingData[$id_article]['likes'] = explode(",", $like['LIKES']);
+            }
+        }
+        foreach ($dislikes as $dislike) {
+            if ($dislike['ID_ARTICLE'] == $id_article) {
+                $matchingData[$id_article]['dislikes'] = explode(",", $dislike['DISLIKES']);
+            }
+        }
+    } return $matchingData;
+}
+function getArticlePubli()
+{
+    $pdo = DBConnection::getInstance()->getConnection();
+    
+    // Récupérer tous les articles
+    $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
+    $stmt_articles = $pdo->prepare($sql_articles);
+    $stmt_articles->execute();
+    $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
+
+    // Récupérer les réactions de type "like" (sans les logins)
+    $sql_likes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
+    $stmt_likes = $pdo->prepare($sql_likes);
+    $stmt_likes->execute();
+    $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Récupérer les réactions de type "dislike"
+    $sql_dislikes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
+    $stmt_dislikes = $pdo->prepare($sql_dislikes);
+    $stmt_dislikes->execute();
+    $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
+
+    // Combinez les résultats dans un tableau associatif
+    $matchingData = array();
+    foreach ($articles as $article) {
+        $id_article = $article['ID'];
+        
+        $matchingData[$id_article] = array(
+            'article' => $article,
+            'nb_likes' => 0,
+            'nb_dislikes' => 0
+        );
+        
+        foreach ($likes as $like) {
+            if ($like['ID_ARTICLE'] == $id_article) {
+                $matchingData[$id_article]['nb_likes'] = $like['NB_LIKES'];
+            }
+        }
+        
+        foreach ($dislikes as $dislike) {
+            if ($dislike['ID_ARTICLE'] == $id_article) {
+                $matchingData[$id_article]['nb_dislikes'] = $dislike['NB_DISLIKES'];
+            }
+        }
+    }
+    
     return $matchingData;
 }
 function deleteArticle($id)
