@@ -563,7 +563,25 @@ function getArticlePubli()
     
     return $matchingData;
 }
-function deleteArticle($id)
+function addArticle($contenu, $login, $titre)
+{
+    try {
+        $pdo = DBConnection::getInstance()->getConnection();
+        $pdo->beginTransaction();
+        $sql = "INSERT INTO ARTICLE (Contenu, Login, Titre ) VALUES (?, ?, ?)";
+        $values = array($contenu, $login, $titre);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($values);
+        $id = $pdo->lastInsertId();
+        $matchingData = getData($id);
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $matchingData = false;
+    }
+    return $matchingData;
+}
+function deleteArticleModo($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
@@ -575,6 +593,39 @@ function deleteArticle($id)
     } catch (Exception $e) {
         $matchingData[0] = $e->getMessage();
     }
+    return $matchingData;
+}
+function deleteArticleAuteur($id, $login)
+{
+    $pdo = DBConnection::getInstance()->getConnection();
+    $matchingData = array();
+    try {
+        $sql = "DELETE * FROM ARTICLE WHERE id = ? AND login = ?";
+        $values = array($id,$login);
+        $stmt = $pdo->prepare($sql);
+        $matchingData[0] = ($stmt->execute($values));
+    } catch (Exception $e) {
+        $matchingData[0] = $e->getMessage();
+    }
+    return $matchingData;
+}
+function updateArticle($login, $id, $contenu, $titre)
+{
+    $pdo = DBConnection::getInstance()->getConnection();
+    $current_article = getArticleId($id);
+    if ($contenu == null) {
+        $contenu = $current_article[0]['contenu'];
+    }
+    if ($titre == null) {
+        $titre = $current_article[0]['titre'];
+    }
+
+    $sql = "UPDATE ARTICLE SET Contenu = ?, Titre = ? WHERE id = ? AND login = ?";
+    $values = array($login, $id, $contenu, $titre);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     return $matchingData;
 }
 function getLikeData($id)
