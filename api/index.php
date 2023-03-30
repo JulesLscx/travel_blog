@@ -28,7 +28,7 @@ switch ($http_method) {
             $limit = null;
         }
         if (!is_valid_user($_GET['login'], $_GET['mdp'])) {
-            $matchingData = getAllArticle();
+            $matchingData = getAllArticleNonAuth();
         } else {
             if ($token_content->privileges == 0) {
                 $matchingData = getArticleModo();
@@ -38,7 +38,7 @@ switch ($http_method) {
                 // l’article, nombre total de dislike.
                 // - Supprimer n’importe quel article.
         } else {
-            $matchingData = getArticleAuteur($_GET['login']);
+            $matchingData = array(getArticleAuteur($_GET['login']), getArticlePubli());
 
                 // - Poster un nouvel article.
                 // - Consulter ses propres articles.
@@ -452,6 +452,15 @@ function getAllUsers()
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
+function getAllArticleNonAuth()
+{
+    $pdo = DBConnection::getInstance()->getConnection();
+    $sql = "SELECT Login, datep, Contenu FROM ARTICLE ORDER BY datep DESC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $matchingData;
+}
 function getAllArticle()
 {
     $pdo = DBConnection::getInstance()->getConnection();
@@ -573,7 +582,43 @@ function addArticle($contenu, $login, $titre)
         $stmt = $pdo->prepare($sql);
         $stmt->execute($values);
         $id = $pdo->lastInsertId();
-        $matchingData = getData($id);
+        $matchingData = getArticleId($id);
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $matchingData = false;
+    }
+    return $matchingData;
+}
+function addLikes($login, $id)
+{
+    try {
+        $pdo = DBConnection::getInstance()->getConnection();
+        $pdo->beginTransaction();
+        $sql = "INSERT INTO REAGIR (login, id, likes) VALUES (?, ?, 1)";
+        $values = array($login, $id);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($values);
+        $id = $pdo->lastInsertId();
+        $matchingData = getLikeData($id);
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $matchingData = false;
+    }
+    return $matchingData;
+}
+function addDislikes($login, $id)
+{
+    try {
+        $pdo = DBConnection::getInstance()->getConnection();
+        $pdo->beginTransaction();
+        $sql = "INSERT INTO REAGIR (login, id, likes) VALUES (?, ?, -1)";
+        $values = array($login, $id);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($values);
+        $id = $pdo->lastInsertId();
+        $matchingData = getDislikeData($id);
         $pdo->commit();
     } catch (Exception $e) {
         $pdo->rollBack();
