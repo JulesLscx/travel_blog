@@ -19,11 +19,9 @@ function deliver_response(int $status, string $status_message, $data): void
  **/
 function is_authorized(int $privileges_required): bool
 {
-    require('jwt_utils.php');
+    require_once('jwt_utils.php');
     $jwt = get_bearer_token();
-    if ($jwt == NULL && $privileges_required == 0) {
-        return true;
-    } else if ($jwt == NULL && $privileges_required != 0) {
+    if ($jwt == null) {
         return false;
     }
     if (is_jwt_valid($jwt)) {

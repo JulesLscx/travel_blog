@@ -15,54 +15,57 @@ if ($token != NULL) {
 # 1 = publisher
 switch ($http_method) {
     case "GET":
-        if ($isAuthentified) {
-            if (is_authorized(0)) {
-                if (empty($_GET['id'])) {
-                    $matchingData = getArticleModo();
-                } else {
-                    if (!is_numeric($_GET['id'])) {
-                        deliver_response(400, "Requête invalide id non numérique", NULL);
-                        return;
-                    }
-                    $matchingData = getArticleId($_GET['id']);
-                }
-                if (empty($matchingData)) {
-                    deliver_response(404, "Aucun article trouvé", NULL);
+        if (!$isAuthentified) {
+            if (empty($_GET['id'])) {
+                $matchingData = getAllArticleNonAuth();
+            } else {
+                if (!is_numeric($_GET['id'])) {
+                    deliver_response(400, "Requête invalide id non numérique", NULL);
                     return;
                 }
+                $matchingData = getArticleId($_GET['id']);
+            }
+            if (empty($matchingData)) {
+                deliver_response(404, "Aucun article trouvé", NULL);
+                return;
+            }
+            deliver_response(200, "Article trouvé", $matchingData);
+            return;
+        }
+        if (is_authorized(0)) {
+            if (empty($_GET['id'])) {
+                $matchingData = getArticleModo();
                 deliver_response(200, "Article trouvé", $matchingData);
                 return;
             }
-            if (is_authorized(1)) {
-                if (empty($_GET['id'])) {
-                    $matchingData = getAllArticle();
-                } else {
-                    if (!is_numeric($_GET['id'])) {
-                        deliver_response(400, "Requête invalide id non numérique", NULL);
-                        return;
-                    }
-                    $matchingData = getArticleId($_GET['id']);
-                }
-                if (empty($matchingData)) {
-                    deliver_response(404, "Aucun article trouvé", NULL);
-                    return;
-                }
-                deliver_response(200, "Article trouvé", $matchingData);
-            }
-            return;
-        }
-        if (empty($_GET['id'])) {
-            $matchingData = getAllArticleNonAuth();
-        } else {
             if (!is_numeric($_GET['id'])) {
                 deliver_response(400, "Requête invalide id non numérique", NULL);
                 return;
             }
             $matchingData = getArticleId($_GET['id']);
+            if (empty($matchingData)) {
+                deliver_response(404, "Aucun article trouvé", NULL);
+                return;
+            }
             deliver_response(200, "Article trouvé", $matchingData);
             return;
         }
-        break;
+        if (is_authorized(1)) {
+            if (empty($_GET['id'])) {
+                $matchingData = getAllArticle();
+            } else {
+                if (!is_numeric($_GET['id'])) {
+                    deliver_response(400, "Requête invalide id non numérique", NULL);
+                    return;
+                }
+                $matchingData = getArticleId($_GET['id']);
+            }
+            if (empty($matchingData)) {
+                deliver_response(404, "Aucun article trouvé", NULL);
+                return;
+            }
+            deliver_response(200, "Article trouvé", $matchingData);
+        }
     case "POST":
         /// Récupération des données envoyées par le Client
         if (!$isAuthentified) {
@@ -121,188 +124,20 @@ switch ($http_method) {
         deliver_response(400, "Aucune action effectuée relisez la documentation ", NULL);
         break;
 }
+# METHODES POST :
 
-function getData($id = null, $limit = null)
+# AJOUTE UN ARTICLE
+
+function addArticle($titre, $contenu, $login)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    if ($limit != null) {
-        $matchingData = getAllUsers($pdo);
-    } else if ($limit != null) {
-        $matchingData = getLikeData($pdo, $id);
-    } else if ($limit != null) {
-        $matchingData = getDislikeData($pdo, $id);
-    } else {
-        $matchingData = getAllArticle();
-    }
-    return $matchingData;
-}
-
-function getLimitedData($pdo, $limit)
-{
-    $sql = "SELECT * FROM travel ORDER BY date_ajout DESC, vote DESC LIMIT ?";
-    $values = array($limit);
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(1, $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
-
-function getLimitedDataOrderedByVotes($pdo, $limit)
-{
-    $sql = "SELECT * FROM travel ORDER BY vote DESC LIMIT ?";
-    $values = array($limit);
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(1, $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
-
-function getDataOrderedByVotes($pdo)
-{
-    $sql = "SELECT * FROM travel ORDER BY vote DESC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
-
-function getSingleData($pdo, $id)
-{
-    $sql = "SELECT * FROM travel WHERE id = ?";
-    $values = array($id);
+    $sql = "INSERT INTO ARTICLE (titre, contenu, login) VALUES (?, ?, ?)";
+    $values = array($titre, $contenu, $login);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-
-function updateAFact($id, $phrase = null, $vote = -1, $faute = -1, $signalement = -1)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $current_phrase = getData($id);
-    if ($phrase == null) {
-        $phrase = $current_phrase[0]['phrase'];
-    }
-    if ($vote == -1) {
-        $vote = $current_phrase[0]['vote'];
-    } else {
-        $vote = $current_phrase[0]['vote'] + 1;
-    }
-    if ($faute == -1) {
-        $faute = $current_phrase[0]['faute'];
-    } else {
-        $faute = $current_phrase[0]['faute'] + 1;
-    }
-    if ($signalement == -1) {
-        $signalement = $current_phrase[0]['signalement'];
-    } else {
-        $signalement = $current_phrase[0]['signalement'] + 1;
-    }
-    $sql = "UPDATE travel SET phrase = ?, vote = ?, faute = ?, signalement = ? , date_modif = ? WHERE id = ?";
-    $values = array($phrase, $vote, $faute, $signalement, date("Y-m-d H:i:s", time()), $id);
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($values);
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    return $matchingData;
-}
-function addphrase($phrase)
-{
-    // Transaction pour récupérer l'id de la phrase
-    try {
-        $pdo = DBConnection::getInstance()->getConnection();
-        $pdo->beginTransaction();
-        $sql = "INSERT INTO travel (phrase, vote, date_ajout,faute, signalement ) VALUES (?, ?, ?, ?, ?)";
-        $values = array($phrase, 0, date("Y-m-d H:i:s", time()), 0, 0);
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-        $id = $pdo->lastInsertId();
-        $matchingData = getData($id);
-        $pdo->commit();
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $matchingData = false;
-    }
-    return $matchingData;
-}
-function votePhrase($id, $vote)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $matchingData = array();
-    if ($vote) {
-        $vote = '+';
-    } else {
-        $vote = '-';
-    }
-    try {
-        $sql = "UPDATE travel SET vote = vote " . $vote . " 1 WHERE id = ?";
-        $values = array($id);
-        $stmt = $pdo->prepare($sql);
-        $matchingData[0] = ($stmt->execute($values));
-    } catch (Exception $e) {
-        $matchingData[0] = $e->getMessage();
-    }
-    return $matchingData;
-}
-function signalPhrase($id, $signalement)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $matchingData = array();
-    if ($signalement) {
-        $signalement = '+';
-    } else {
-        $signalement = '-';
-    }
-    try {
-        $sql = "UPDATE travel SET signalement = signalement " . $signalement . " 1 WHERE id = ?";
-        $values = array($id);
-        $stmt = $pdo->prepare($sql);
-        $matchingData[0] = ($stmt->execute($values));
-    } catch (Exception $e) {
-        $matchingData[0] = $e->getMessage();
-    }
-    return $matchingData;
-}
-function fautephrase($id, $faute)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $matchingData = array();
-    if ($faute) {
-        $faute = '+';
-    } else {
-        $faute = '-';
-    }
-    try {
-        $sql = "UPDATE travel SET faute = faute " . $faute . " 1 WHERE id = ?";
-        $values = array($id);
-        $stmt = $pdo->prepare($sql);
-        $matchingData[0] = ($stmt->execute($values));
-    } catch (Exception $e) {
-        $matchingData[0] = $e->getMessage();
-    }
-    return $matchingData;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # METHODES GET :
 
 # RETOURNE UN ARTICLE AVEC UN ID
@@ -363,7 +198,7 @@ function getAllUsers()
 function getAllArticleNonAuth()
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT Login, datep, Contenu FROM ARTICLE ORDER BY datep DESC";
+    $sql = "SELECT Titre, Login, datep, Contenu FROM ARTICLE ORDER BY datep DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -394,42 +229,26 @@ function getArticleAuteur($login)
 function getArticleModo()
 {
     $pdo = DBConnection::getInstance()->getConnection();
-
-    // Récupérer tous les articles
-    $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
-    $stmt_articles = $pdo->prepare($sql_articles);
-    $stmt_articles->execute();
-    $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
-
-    // Récupérer les réactions de type "like"
-    $sql_likes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
-    $stmt_likes = $pdo->prepare($sql_likes);
-    $stmt_likes->execute();
-    $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
-
-    // Récupérer les réactions de type "dislike"
-    $sql_dislikes = "SELECT REAGIR.ID, GROUP_CONCAT(REAGIR.LOGIN) AS DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
-    $stmt_dislikes = $pdo->prepare($sql_dislikes);
-    $stmt_dislikes->execute();
-    $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
+    $articles = getArticles($pdo);
+    $likes = getLikes($pdo);
+    $dislikes = getDislikes($pdo);
 
     // Combinez les résultats dans un tableau associatif
     $matchingData = array();
     foreach ($articles as $article) {
         $id_article = $article['ID'];
-
         $matchingData[$id_article] = array(
             'article' => $article,
             'likes' => array(),
             'dislikes' => array()
         );
         foreach ($likes as $like) {
-            if ($like['ID_ARTICLE'] == $id_article) {
+            if ($like['ID'] == $id_article) {
                 $matchingData[$id_article]['likes'] = explode(",", $like['LIKES']);
             }
         }
         foreach ($dislikes as $dislike) {
-            if ($dislike['ID_ARTICLE'] == $id_article) {
+            if ($dislike['ID'] == $id_article) {
                 $matchingData[$id_article]['dislikes'] = explode(",", $dislike['DISLIKES']);
             }
         }
@@ -441,25 +260,8 @@ function getArticlePubli()
 {
     $pdo = DBConnection::getInstance()->getConnection();
 
-    // Récupérer tous les articles
-    $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
-    $stmt_articles = $pdo->prepare($sql_articles);
-    $stmt_articles->execute();
-    $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
+    $articles = getArticles($pdo);
 
-    // Récupérer les réactions de type "like" (sans les logins)
-    $sql_likes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
-    $stmt_likes = $pdo->prepare($sql_likes);
-    $stmt_likes->execute();
-    $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
-
-    // Récupérer les réactions de type "dislike"
-    $sql_dislikes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
-    $stmt_dislikes = $pdo->prepare($sql_dislikes);
-    $stmt_dislikes->execute();
-    $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
-
-    // Combinez les résultats dans un tableau associatif
     $matchingData = array();
     foreach ($articles as $article) {
         $id_article = $article['ID'];
@@ -469,63 +271,41 @@ function getArticlePubli()
             'nb_likes' => 0,
             'nb_dislikes' => 0
         );
-
-        foreach ($likes as $like) {
-            if ($like['ID_ARTICLE'] == $id_article) {
-                $matchingData[$id_article]['nb_likes'] = $like['NB_LIKES'];
-            }
-        }
-
-        foreach ($dislikes as $dislike) {
-            if ($dislike['ID_ARTICLE'] == $id_article) {
-                $matchingData[$id_article]['nb_dislikes'] = $dislike['NB_DISLIKES'];
-            }
-        }
+        $matchingData[$id_article]['nb_likes'] = getLikeData($id_article);
+        $matchingData[$id_article]['nb_dislikes'] = getDislikeData($id_article);
     }
 
     return $matchingData;
 }
-
-
-# METHODE POST
-
-# AJOUTE UN ARTICLE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
-function addArticle($contenu, $login, $titre)
+# Chunk de code pour récupérer les articles
+function getArticles($pdo)
 {
-    try {
-        $pdo = DBConnection::getInstance()->getConnection();
-        $pdo->beginTransaction();
-        $sql = "INSERT INTO ARTICLE (Contenu, Login, Titre ) VALUES (?, ?, ?)";
-        $values = array($contenu, $login, $titre);
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-        $id = $pdo->lastInsertId();
-        $matchingData = getArticleId($id);
-        $pdo->commit();
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $matchingData = false;
-    }
-    return $matchingData;
+    $sql_articles = "SELECT * FROM ARTICLE ORDER BY datep DESC";
+    $stmt_articles = $pdo->prepare($sql_articles);
+    $stmt_articles->execute();
+    $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
+
+    return $articles;
 }
-# AJOUTE UN LIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
-function addLikes($login, $id)
+# Chunk de code pour récupérer les likes
+function getLikes($pdo)
 {
-    try {
-        $pdo = DBConnection::getInstance()->getConnection();
-        $pdo->beginTransaction();
-        $sql = "INSERT INTO REAGIR (login, id, likes) VALUES (?, ?, 1)";
-        $values = array($login, $id);
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-        $id = $pdo->lastInsertId();
-        $matchingData = getLikeData($id);
-        $pdo->commit();
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $matchingData = false;
-    }
-    return $matchingData;
+    $sql_likes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
+    $stmt_likes = $pdo->prepare($sql_likes);
+    $stmt_likes->execute();
+    $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
+
+    return $likes;
+}
+# Chunk de code pour récupérer les dislikes
+function getDislikes($pdo)
+{
+    $sql_dislikes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
+    $stmt_dislikes = $pdo->prepare($sql_dislikes);
+    $stmt_dislikes->execute();
+    $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
+
+    return $dislikes;
 }
 # AJOUTE UN DISLIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function addDislikes($login, $id)
