@@ -21,8 +21,8 @@ Exemple de body de requête :
 
 ``` json
 {
-    login: 'user1',
-    mdp: 'mdp1'
+    "login": "user1",
+    "mdp": "mdp1"
 }
 ```
 <br>
