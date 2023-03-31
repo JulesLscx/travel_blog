@@ -42,7 +42,7 @@ switch ($http_method) {
                 deliver_response(400, "Requête invalide id non numérique", NULL);
                 return;
             }
-            $matchingData = getArticleId($_GET['id']);
+            $matchingData = getArticleIdModo($_GET['id']);
             if (empty($matchingData)) {
                 deliver_response(404, "Aucun article trouvé", NULL);
                 return;
@@ -51,14 +51,19 @@ switch ($http_method) {
             return;
         }
         if (is_authorized(1)) {
+            if (!empty($_GET['account'])) {
+                $matchingData = getArticleAuteur($token_content->login);
+                deliver_response(200, "Article trouvé", $matchingData);
+                return;
+            }
             if (empty($_GET['id'])) {
-                $matchingData = getAllArticle();
+                $matchingData = getArticlePubli();
             } else {
                 if (!is_numeric($_GET['id'])) {
                     deliver_response(400, "Requête invalide id non numérique", NULL);
                     return;
                 }
-                $matchingData = getArticleId($_GET['id']);
+                $matchingData = getArticleIdPubli($_GET['id']);
             }
             if (empty($matchingData)) {
                 deliver_response(404, "Aucun article trouvé", NULL);
@@ -66,6 +71,7 @@ switch ($http_method) {
             }
             deliver_response(200, "Article trouvé", $matchingData);
         }
+        break;
     case "POST":
         /// Récupération des données envoyées par le Client
         if (!$isAuthentified) {
@@ -91,9 +97,95 @@ switch ($http_method) {
         break;
         /// Cas de la méthode PUT
     case "PATCH":
+        if (!$isAuthentified) {
+            deliver_response(401, "Vous n'êtes pas authentifié", NULL);
+            return;
+        }
+        if (!is_authorized(1)) {
+            deliver_response(403, "Vous n'avez pas les droits pour liker un article", NULL);
+            return;
+        }
+        if (empty($_GET['id'])) {
+            deliver_response(400, "Requête invalide id indéfini", NULL);
+            return;
+        }
+        if (!is_numeric($_GET['id'])) {
+            deliver_response(400, "Requête invalide id non numérique", NULL);
+            return;
+        }
+        $article = getArticleId($_GET['id']);
+        if (empty($article)) {
+            deliver_response(404, "Aucun article trouvé", NULL);
+            return;
+        }
+        if ($article[0]['Login'] == $token_content->login) {
+            deliver_response(403, "Vous n'allez pas liker votre propre article", NULL);
+            return;
+        }
+        $postedData = file_get_contents('php://input');
+        $postedData = json_decode($postedData, true);
+        if (empty($postedData['like'])) {
+            deliver_response(400, "Requête invalide like indéfini", NULL);
+            return;
+        }
+        if ($postedData['like'] == 1) {
+            $matchingData = addLikes($token_content->login, $_GET['id']);
+            if (empty($matchingData) || $matchingData == false) {
+                deliver_response(500, "Erreur lors du like de l'article", NULL);
+                return;
+            }
+            deliver_response(200, "Article liké", $matchingData);
+            return;
+        }
+        if ($postedData['like'] == -1) {
+            $matchingData = addDislikes($token_content->login, $_GET['id']);
+            if (empty($matchingData) || $matchingData == false) {
+                deliver_response(500, "Erreur lors du dislike de l'article", NULL);
+                return;
+            }
+            deliver_response(200, "Article disliké", $matchingData);
+            return;
+        }
+        deliver_response(400, "Requête invalide like non conforme", NULL);
         break;
     case "PUT":
-        deliver_response(410, 'Méthode PUT non implémentée', NULL);
+        if (!$isAuthentified) {
+            deliver_response(401, "Vous n'êtes pas authentifié", NULL);
+            return;
+        }
+        if (!is_authorized(1)) {
+            deliver_response(403, "Vous n'avez pas les droits pour modifier un article", NULL);
+            return;
+        }
+        if (empty($_GET['id'])) {
+            deliver_response(400, "Requête invalide id indéfini", NULL);
+            return;
+        }
+        if (!is_numeric($_GET['id'])) {
+            deliver_response(400, "Requête invalide id non numérique", NULL);
+            return;
+        }
+        $postedData = file_get_contents('php://input');
+        $postedData = json_decode($postedData, true);
+        $article = getArticleId($_GET['id']);
+        if (empty($article)) {
+            deliver_response(404, "Aucun article trouvé", NULL);
+            return;
+        }
+        if ($article[0]['Login'] != $token_content->login) {
+            deliver_response(403, "Vous n'avez pas les droits pour modifier cet article ce n'est pas le vôtre", NULL);
+            return;
+        }
+        if (empty($postedData['titre']) || empty($postedData['contenu'])) {
+            deliver_response(400, "Requête invalide titre ou contenu indéfini", NULL);
+            return;
+        }
+        $matchingData = updateArticle($token_content->login, $_GET['id'], $postedData['contenu'], $postedData['titre']);
+        if (empty($matchingData) || $matchingData == false) {
+            deliver_response(500, "Erreur lors de la modification de l'article", NULL);
+            return;
+        }
+        deliver_response(200, "Article modifié", $matchingData);
         break;
         /// Cas de la méthode DELETE
     case "DELETE":
@@ -109,16 +201,22 @@ switch ($http_method) {
             deliver_response(400, "Requête invalide id non numérique", NULL);
             return;
         }
-        if (!is_authorized(1) && $token_content->login != getArticleId($_GET['id'])['login']) {
+        $article = getArticleId($_GET['id']);
+        if (empty($article)) {
+            deliver_response(404, "Aucun article trouvé", NULL);
+            return;
+        }
+        if (is_authorized(1) &&  $article[0]['Login'] != $token_content->login) {
             deliver_response(403, "Vous n'avez pas les droits pour supprimer cet article ce n'est pas le vôtre", NULL);
             return;
         }
-        $matchingData = deleteArticleModo($_GET['id']);
+        $matchingData = deleteArticle($_GET['id']);
         if (empty($matchingData) || $matchingData == false) {
             deliver_response(500, "Erreur lors de la suppression de l'article", NULL);
             return;
         }
         deliver_response(200, "Article supprimé", $matchingData);
+        break;
     default:
         /// Envoi de la réponse au Client
         deliver_response(400, "Aucune action effectuée relisez la documentation ", NULL);
@@ -131,11 +229,16 @@ switch ($http_method) {
 function addArticle($titre, $contenu, $login)
 {
     $pdo = DBConnection::getInstance()->getConnection();
+    $pdo->beginTransaction();
     $sql = "INSERT INTO ARTICLE (titre, contenu, login) VALUES (?, ?, ?)";
     $values = array($titre, $contenu, $login);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
+    $sql = "SELECT * FROM ARTICLE ORDER BY DATEP DESC LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $pdo->commit();
     return $matchingData;
 }
 # METHODES GET :
@@ -144,56 +247,43 @@ function addArticle($titre, $contenu, $login)
 function getArticleId($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT * FROM ARTICLE WHERE id = ?";
+    $sql = "SELECT Titre, Login, datep, Contenu FROM ARTICLE WHERE id = ?";
     $values = array($id);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-# RETOURNE UN ARTICLE AVEC UN TAG(DESTINATION, ACTIVITE, ...)
-function getArticleTag($tag)
+
+function getArticleIdModo($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT ARTICLE.* FROM ARTICLE JOIN TAGS ON ARTICLE.ID=TAGS.ID WHERE TAG = ?";
-    $values = array($tag);
+    $sql = "SELECT *  FROM ARTICLE WHERE id = ?";
+    $values = array($id);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
+    $result = $matchingData[0];
+    $result['LIKES'] = getLikes($pdo, $id);
+    $result['DISLIKES'] = getDislikes($pdo, $id);
+    return $result;
 }
-# RETOURNE UN ARTICLE AVEC UNE DATE MAIS ON UTILISE PAS AU FINAL
-function getArticleDate($date)
+
+function getArticleIdPubli($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT * FROM ARTICLE WHERE datep = ?";
-    $values = array($date);
+    $sql = "SELECT * FROM ARTICLE WHERE id = ?";
+    $values = array($id);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
+    $result = $matchingData[0];
+    $result['LIKES'] = getLikeData($id);
+    $result['DISLIKES'] = getDislikeData($id);
+    return $result;
 }
-# RETOURNE UN/DES ARTICLE(S) DEPUIS TITRE
-function getArticleTitre($titre)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT * FROM ARTICLE WHERE titre = ?";
-    $values = array($titre);
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($values);
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
-# RETOURNE TOUS LES UTILISATEURS DE LA BASE DE DONNEES
-function getAllUsers()
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT login FROM ARTICLE";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
+
+
 # RETOURNE TOUS LES ARTICLES POUR UNE PERSONNNE NON AUTHENTIFIE SOIT ARTICLE(LOGIN, DATEP, CONTENU)
 function getAllArticleNonAuth()
 {
@@ -204,16 +294,7 @@ function getAllArticleNonAuth()
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $matchingData;
 }
-# RETOURNE TOUS LES ARTICLES POUR UNE PERSONNNE AUTHENTIFIE AVEC TOUS LES CHAMPS
-function getAllArticle()
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT * FROM ARTICLE ORDER BY datep DESC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
-}
+
 # RETOURNE TOUS LES ARTICLES D'UN AUTEUR/PUBLISHER
 function getArticleAuteur($login)
 {
@@ -223,6 +304,10 @@ function getArticleAuteur($login)
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($matchingData as $key => $value) {
+        $matchingData[$key]['LIKES'] = getLikeData($value['ID']);
+        $matchingData[$key]['DISLIKES'] = getDislikeData($value['ID']);
+    }
     return $matchingData;
 }
 # RETOURNE ABSOLUMENT TOUS LES ARTICLES 
@@ -230,8 +315,6 @@ function getArticleModo()
 {
     $pdo = DBConnection::getInstance()->getConnection();
     $articles = getArticles($pdo);
-    $likes = getLikes($pdo);
-    $dislikes = getDislikes($pdo);
 
     // Combinez les résultats dans un tableau associatif
     $matchingData = array();
@@ -242,16 +325,8 @@ function getArticleModo()
             'likes' => array(),
             'dislikes' => array()
         );
-        foreach ($likes as $like) {
-            if ($like['ID'] == $id_article) {
-                $matchingData[$id_article]['likes'] = explode(",", $like['LIKES']);
-            }
-        }
-        foreach ($dislikes as $dislike) {
-            if ($dislike['ID'] == $id_article) {
-                $matchingData[$id_article]['dislikes'] = explode(",", $dislike['DISLIKES']);
-            }
-        }
+        $matchingData[$id_article]['likes'] = getLikes($pdo, $id_article);
+        $matchingData[$id_article]['dislikes'] = getDislikes($pdo, $id_article);
     }
     return $matchingData;
 }
@@ -288,40 +363,58 @@ function getArticles($pdo)
     return $articles;
 }
 # Chunk de code pour récupérer les likes
-function getLikes($pdo)
+function getLikes($pdo, $id)
 {
-    $sql_likes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_LIKES FROM REAGIR WHERE REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
+    $sql_likes = "SELECT login FROM REAGIR WHERE id = ? and REAGIR.LIKES = 1 GROUP BY REAGIR.ID";
     $stmt_likes = $pdo->prepare($sql_likes);
+    $stmt_likes->bindParam(1, $id);
     $stmt_likes->execute();
     $likes = $stmt_likes->fetchAll(PDO::FETCH_ASSOC);
-
-    return $likes;
+    $useful_data = new ArrayObject();
+    foreach ($likes as $like) {
+        $useful_data->append($like['login']);
+    }
+    return $useful_data->getArrayCopy();
 }
 # Chunk de code pour récupérer les dislikes
-function getDislikes($pdo)
+function getDislikes($pdo, $id)
 {
-    $sql_dislikes = "SELECT REAGIR.ID, COUNT(REAGIR.LIKES) AS NB_DISLIKES FROM REAGIR WHERE REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
+    $sql_dislikes = "SELECT login FROM REAGIR WHERE id = ? and REAGIR.LIKES = -1 GROUP BY REAGIR.ID";
     $stmt_dislikes = $pdo->prepare($sql_dislikes);
+    $stmt_dislikes->bindParam(1, $id);
     $stmt_dislikes->execute();
     $dislikes = $stmt_dislikes->fetchAll(PDO::FETCH_ASSOC);
-
-    return $dislikes;
+    $useful_data = new ArrayObject();
+    foreach ($dislikes as $dislike) {
+        $useful_data->append($dislike['login']);
+    }
+    return $useful_data->getArrayCopy();
 }
 # AJOUTE UN DISLIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
 function addDislikes($login, $id)
 {
     try {
         $pdo = DBConnection::getInstance()->getConnection();
-        $pdo->beginTransaction();
         $sql = "INSERT INTO REAGIR (login, id, likes) VALUES (?, ?, -1)";
         $values = array($login, $id);
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-        $id = $pdo->lastInsertId();
-        $matchingData = getDislikeData($id);
-        $pdo->commit();
+        $matchingData = $stmt->execute($values);
     } catch (Exception $e) {
-        $pdo->rollBack();
+        $matchingData = false;
+    }
+    return $matchingData;
+}
+
+# AJOUTE UN LIKE (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
+function addLikes($login, $id)
+{
+    try {
+        $pdo = DBConnection::getInstance()->getConnection();
+        $sql = "INSERT INTO REAGIR (login, id, likes) VALUES (?, ?, 1)";
+        $values = array($login, $id);
+        $stmt = $pdo->prepare($sql);
+        $matchingData = $stmt->execute($values);
+    } catch (Exception $e) {
         $matchingData = false;
     }
     return $matchingData;
@@ -330,36 +423,20 @@ function addDislikes($login, $id)
 # METHODE DELETE
 
 # SUPPRIME UN ARTICLE DEPUIS UN ID (UNIQUEMENT UN MODERATEUR PEUT FAIRE CELA)
-function deleteArticleModo($id)
+function deleteArticle($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
     $matchingData = array();
     try {
-        $sql = "DELETE * FROM ARTICLE WHERE id = ?";
+        $sql = "DELETE FROM ARTICLE WHERE id = ?";
         $values = array($id);
         $stmt = $pdo->prepare($sql);
-        $matchingData[0] = ($stmt->execute($values));
+        $matchingData = $stmt->execute($values);
     } catch (Exception $e) {
-        $matchingData[0] = $e->getMessage();
+        $matchingData = $e->getMessage();
     }
     return $matchingData;
 }
-# SUPPRIME SON PROPRE ARTICLE DEPUIS UN ID,LOGIN (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
-function deleteArticleAuteur($id, $login)
-{
-    $pdo = DBConnection::getInstance()->getConnection();
-    $matchingData = array();
-    try {
-        $sql = "DELETE * FROM ARTICLE WHERE id = ? AND login = ?";
-        $values = array($id, $login);
-        $stmt = $pdo->prepare($sql);
-        $matchingData[0] = ($stmt->execute($values));
-    } catch (Exception $e) {
-        $matchingData[0] = $e->getMessage();
-    }
-    return $matchingData;
-}
-
 # METHODE PUT
 
 # MODIFIE UN ARTICLE DEPUIS UN ID,LOGIN,CONTENU et TITRE  (UNIQUEMENT UN PUBLISHER PEUT FAIRE CELA)
@@ -374,11 +451,10 @@ function updateArticle($login, $id, $contenu, $titre)
         $titre = $current_article[0]['titre'];
     }
 
-    $sql = "UPDATE ARTICLE SET Contenu = ?, Titre = ? WHERE id = ? AND login = ?";
-    $values = array($login, $id, $contenu, $titre);
+    $sql = "UPDATE ARTICLE SET CONTENU = ?, TITRE = ? WHERE ID = ? AND login = ?";
+    $values = array($contenu, $titre, $id, $login);
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($values);
-    $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $matchingData = $stmt->execute($values);
 
     return $matchingData;
 }
@@ -386,21 +462,21 @@ function updateArticle($login, $id, $contenu, $titre)
 function getLikeData($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes > 0";
+    $sql = "SELECT COUNT(likes) AS DISLIKES FROM REAGIR WHERE id = ? and likes > 0";
     $values = array($id);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
+    return $matchingData[0]['DISLIKES'];
 }
 # RETOURNE LES DISLIKES D'UN ARTICLE DEPUIS UN ID POUR LA FONCTION addDislikes
 function getDislikeData($id)
 {
     $pdo = DBConnection::getInstance()->getConnection();
-    $sql = "SELECT COUNT(likes) FROM REAGIR WHERE id = ? and likes < 0";
+    $sql = "SELECT COUNT(likes) as LIKES FROM REAGIR WHERE id = ? and likes < 0";
     $values = array($id);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($values);
     $matchingData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    return $matchingData;
+    return $matchingData[0]['LIKES'];
 }

@@ -13,6 +13,15 @@ if (!isset($data['login']) || !isset($data['mdp'])) {
     deliver_response(400, "Bad Request, POST body must contain login & mdp fields", NULL);
     exit();
 }
+if (isset($data['exp'])) {
+    if (!is_numeric($data['exp'])) {
+        deliver_response(400, "Bad Request, exp field must be a number", NULL);
+        exit();
+    }
+    $exp = time() + $data['exp'];
+} else {
+    $exp = time() + 60;
+}
 $login = $data['login'];
 $mdp = $data['mdp'];
 $privilege = is_valid_user($login, $mdp);
@@ -20,7 +29,7 @@ if ($privilege >= 0) {
     $payload = array(
         "login" => $login,
         "privileges" => $privilege,
-        "exp" => time() + 60
+        "exp" => $exp
     );
     $header = array(
         "alg" => "HS256",
