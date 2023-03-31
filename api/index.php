@@ -93,7 +93,22 @@ switch ($http_method) {
     case "PATCH":
         break;
     case "PUT":
-        deliver_response(410, 'Méthode PUT non implémentée', NULL);
+        if (!$isAuthentified){
+            deliver_response(401, "Vous n'êtes pas authentifié", NULL);
+            return;             
+        }
+        if (!is_authorized(1)){
+            deliver_response(403, "Vous n'avez pas les droits pour modifier un article", NULL);
+            return;             
+        }
+        $postedData = file_get_contents('php://input');
+        $postedData = json_decode($postedData, true);
+        $matchingData = updateArticle($token_content->login, $postedData['id'], $postedData['contenu'], $postedData['titre']);
+        if (empty($matchingData) || $matchingData == false) {
+            deliver_response(500, "Erreur lors de la modification de l'article", NULL);
+            return;
+        }
+        deliver_response(200, "Article modifié", $matchingData);
         break;
         /// Cas de la méthode DELETE
     case "DELETE":
